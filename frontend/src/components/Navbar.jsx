@@ -74,13 +74,11 @@ export default function Navbar({
           className={`status-pill ${hindsightConnected ? "connected" : "missing"}`}
           title={healthData?.hindsight?.message || "Hindsight Cloud Memory Status"}
         >
-          <span className={`status-dot ${hindsightConnected ? "green" : "amber"}`}></span>
+          <span className={`status-dot ${hindsightConnected ? "green" : "red"}`}></span>
           <span>
             {hindsightConnected 
-              ? "Hindsight Live" 
-              : hindsightConfigured 
-                ? "Hindsight Connecting..." 
-                : "Hindsight Key Needed"}
+              ? "Hindsight Cloud: Connected" 
+              : "Hindsight Cloud: Disconnected"}
           </span>
         </div>
 

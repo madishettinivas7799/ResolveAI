@@ -52,13 +52,13 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Configuration Notice if Hindsight is not yet configured */}
-        {!healthData?.hindsight?.connected && (
+        {/* Hindsight Status Banner */}
+        {!healthData?.hindsight?.connected ? (
           <div style={{
             marginTop: "1.25rem",
             padding: "0.85rem 1.15rem",
-            background: "rgba(245, 158, 11, 0.1)",
-            border: "1px solid rgba(245, 158, 11, 0.3)",
+            background: "rgba(244, 63, 94, 0.1)",
+            border: "1px solid rgba(244, 63, 94, 0.3)",
             borderRadius: "var(--radius-md)",
             display: "flex",
             alignItems: "center",
@@ -67,17 +67,40 @@ export default function Dashboard({
             gap: "0.75rem"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-              <Clock size={18} color="var(--accent-amber)" />
-              <span style={{ fontSize: "0.875rem", color: "#fef3c7" }}>
-                <strong>Hindsight Cloud:</strong> Open <code style={{ color: "#38bdf8" }}>backend/.env</code> and enter your <code>HINDSIGHT_API_KEY</code> to enable live cognitive memory retention and recall.
+              <Clock size={18} color="var(--accent-rose)" />
+              <span style={{ fontSize: "0.875rem", color: "#fecdd3" }}>
+                <strong>Hindsight Cloud: Disconnected.</strong> Check your <code>HINDSIGHT_API_KEY</code> in <code>backend/.env</code> to connect.
               </span>
             </div>
             <button 
               className="btn btn-secondary btn-sm"
               onClick={() => setActiveTab("memory")}
             >
-              View Memory Settings
+              View Memory Bank
             </button>
+          </div>
+        ) : (
+          <div style={{
+            marginTop: "1.25rem",
+            padding: "0.65rem 1.15rem",
+            background: "rgba(16, 185, 129, 0.06)",
+            border: "1px solid rgba(16, 185, 129, 0.2)",
+            borderRadius: "var(--radius-md)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.75rem"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              <CheckCircle2 size={16} color="var(--accent-emerald)" />
+              <span style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>
+                <strong style={{ color: "var(--accent-emerald)" }}>Hindsight Cloud: Connected</strong> (Bank: <code>{healthData?.hindsight?.bankId || "resolveai"}</code>). Persistent memory layer active.
+              </span>
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              Session counters below track current app session telemetry.
+            </span>
           </div>
         )}
       </div>
@@ -110,9 +133,12 @@ export default function Dashboard({
           </div>
           <div className="stat-info">
             <span className="stat-value">
-              {memoryStats?.totalRetains !== undefined ? memoryStats.totalRetains : (stats.retained || 1)}
+              {memoryStats?.sessionRetains ?? memoryStats?.totalRetains ?? 0}
             </span>
-            <span className="stat-label">Memories Stored (Hindsight)</span>
+            <span className="stat-label">Session Retains</span>
+            <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+              Local session telemetry
+            </span>
           </div>
         </div>
 
@@ -121,8 +147,13 @@ export default function Dashboard({
             <Search size={26} />
           </div>
           <div className="stat-info">
-            <span className="stat-value">{memoryStats?.totalRecalls || 2}</span>
-            <span className="stat-label">Similar Recalls Executed</span>
+            <span className="stat-value">
+              {memoryStats?.sessionRecalls ?? memoryStats?.totalRecalls ?? 0}
+            </span>
+            <span className="stat-label">Session Recalls</span>
+            <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+              Local session telemetry
+            </span>
           </div>
         </div>
       </div>
@@ -321,9 +352,13 @@ export default function Dashboard({
                       <span className="retained-badge">
                         <CheckCircle2 size={12} /> Stored in Memory
                       </span>
+                    ) : inc.retainFailed ? (
+                      <span className="retained-badge error" style={{ background: "rgba(244, 63, 94, 0.12)", color: "var(--accent-rose)", border: "1px solid rgba(244, 63, 94, 0.3)" }}>
+                        Retention failed
+                      </span>
                     ) : (
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        Not yet retained
+                        Not retained
                       </span>
                     )}
                   </td>

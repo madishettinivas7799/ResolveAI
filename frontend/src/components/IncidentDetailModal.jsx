@@ -129,9 +129,9 @@ export default function IncidentDetailModal({ incident, isOpen, onClose, onRetai
 
           {/* Hindsight Status Banner */}
           <div style={{
-            background: incident.retainedToHindsight ? "rgba(16, 185, 129, 0.1)" : "var(--bg-primary)",
+            background: incident.retainedToHindsight ? "rgba(16, 185, 129, 0.1)" : incident.retainFailed ? "rgba(244, 63, 94, 0.1)" : "var(--bg-primary)",
             border: "1px solid",
-            borderColor: incident.retainedToHindsight ? "rgba(16, 185, 129, 0.3)" : "var(--border-color)",
+            borderColor: incident.retainedToHindsight ? "rgba(16, 185, 129, 0.3)" : incident.retainFailed ? "rgba(244, 63, 94, 0.3)" : "var(--border-color)",
             padding: "0.85rem 1rem",
             borderRadius: "var(--radius-md)",
             display: "flex",
@@ -139,11 +139,13 @@ export default function IncidentDetailModal({ incident, isOpen, onClose, onRetai
             justifyContent: "space-between"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Brain size={18} color={incident.retainedToHindsight ? "var(--accent-emerald)" : "var(--text-muted)"} />
+              <Brain size={18} color={incident.retainedToHindsight ? "var(--accent-emerald)" : incident.retainFailed ? "var(--accent-rose)" : "var(--text-muted)"} />
               <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
                 {incident.retainedToHindsight 
                   ? "Retained in Hindsight Memory Bank" 
-                  : "Not yet retained in Hindsight"}
+                  : incident.retainFailed
+                    ? `Retention failed: ${incident.retainError || "Hindsight unavailable"}`
+                    : "Not yet retained in Hindsight"}
               </span>
             </div>
 
@@ -153,7 +155,7 @@ export default function IncidentDetailModal({ incident, isOpen, onClose, onRetai
                 onClick={handleRetain}
                 disabled={isRetaining}
               >
-                {isRetaining ? "Retaining..." : "Retain into Memory"}
+                {isRetaining ? "Retaining..." : incident.retainFailed ? "Retry Retain" : "Retain into Memory"}
               </button>
             )}
           </div>

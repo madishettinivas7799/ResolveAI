@@ -18,18 +18,25 @@ export default function DemoScenarioModal({
   const [step, setStep] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
   const [retainedData, setRetainedData] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   if (!isOpen) return null;
 
   const handleStep1Retain = async () => {
     setIsRunning(true);
+    setErrorMsg(null);
     try {
       const res = await fetch("/api/incidents/seed-demo", { method: "POST" });
       const data = await res.json();
+      if (!res.ok || !data.success || !data.incident?.retainedToHindsight) {
+        setErrorMsg(data.error || data.retainError || "Failed to retain incident in Hindsight");
+        return;
+      }
       setRetainedData(data);
       setStep(2);
     } catch (err) {
       console.error(err);
+      setErrorMsg(err.message || "Failed to retain incident in Hindsight");
     } finally {
       setIsRunning(false);
     }
@@ -118,6 +125,20 @@ export default function DemoScenarioModal({
               </div>
               <div>OUTCOME: Payment service recovered successfully.</div>
             </div>
+
+            {errorMsg && (
+              <div style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#f87171",
+                padding: "0.75rem",
+                borderRadius: "var(--radius-md)",
+                fontSize: "0.8rem",
+                marginBottom: "1rem"
+              }}>
+                ⚠️ {errorMsg}
+              </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
               <button className="btn btn-outline" onClick={onClose}>

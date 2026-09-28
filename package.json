@@ -5,9 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "backend": "cd backend && npm run dev",
-    "frontend": "cd frontend && npm run dev",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "install:backend": "npm --prefix backend install",
+    "install:frontend": "npm --prefix frontend install",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run install:backend && npm run install:frontend && npm run build:frontend",
+    "render-build": "npm install && npm run install:backend && npm run install:frontend && npm run build:frontend",
+    "start": "node backend/server.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

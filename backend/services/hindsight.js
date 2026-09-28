@@ -1,12 +1,27 @@
 import { HindsightClient } from "@vectorize-io/hindsight-client";
+import { withTimeout } from "../utils/asyncUtils.js";
 
-// In-memory memory audit log for telemetry and statistics
-const memoryAuditLog = {
+// Local in-memory session audit log for application telemetry
+// NOTE: These counters track current backend session operations and reset upon server restart.
+// Permanent memories reside persistently in Hindsight Cloud.
+const sessionTelemetry = {
   retains: [],
   recalls: []
 };
 
 let hindsightClientInstance = null;
+let simulatedState = null; // null | "unavailable" | "timeout"
+
+/**
+ * Configure simulation mode for automated testing without modifying credentials
+ */
+export function setHindsightSimulation(mode) {
+  simulatedState = mode;
+}
+
+export function getHindsightSimulation() {
+  return simulatedState;
+}
 
 function getHindsightClient() {
   const apiKey = process.env.HINDSIGHT_API_KEY?.trim();
@@ -43,9 +58,14 @@ export async function getEffectiveBankId() {
   const baseUrl = process.env.HINDSIGHT_BASE_URL?.trim() || "https://api.hindsight.vectorize.io";
   if (apiKey) {
     try {
-      const res = await fetch(`${baseUrl}/v1/default/banks`, {
-        headers: { Authorization: `Bearer ${apiKey}` }
-      });
+      const res = await withTimeout(
+        fetch(`${baseUrl}/v1/default/banks`, {
+          headers: { Authorization: `Bearer ${apiKey}` }
+        }),
+        6000,
+        "HINDSIGHT_TIMEOUT",
+        "Bank discovery timed out"
+      );
       if (res.ok) {
         const data = await res.json();
         if (data.banks && data.banks.length > 0) {
@@ -55,7 +75,7 @@ export async function getEffectiveBankId() {
         }
       }
     } catch (e) {
-      console.warn("[Hindsight] Auto-bank discovery failed:", e.message);
+      console.warn("[Hindsight] Auto-bank discovery failed non-fatally:", e.message);
     }
   }
 
@@ -64,6 +84,14 @@ export async function getEffectiveBankId() {
 }
 
 export function getHindsightConfig() {
+  if (simulatedState === "unavailable") {
+    return {
+      configured: false,
+      baseUrl: "https://api.hindsight.vectorize.io",
+      bankId: "simulated-unavailable"
+    };
+  }
+
   const apiKey = process.env.HINDSIGHT_API_KEY?.trim();
   const baseUrl = process.env.HINDSIGHT_BASE_URL?.trim() || "https://api.hindsight.vectorize.io";
   const bankId = resolvedBankId || process.env.HINDSIGHT_BANK_ID?.trim() || "resolveai";
@@ -79,6 +107,15 @@ export function getHindsightConfig() {
  * Health check for Hindsight Cloud
  */
 export async function checkHindsightHealth() {
+  if (simulatedState === "unavailable") {
+    return {
+      configured: false,
+      connected: false,
+      bankId: "unavailable",
+      message: "Hindsight Cloud is temporarily unavailable (simulated)"
+    };
+  }
+
   const config = getHindsightConfig();
 
   if (!config.configured) {
@@ -102,8 +139,13 @@ export async function checkHindsightHealth() {
       };
     }
 
-    // Ping version endpoint
-    const version = await client.getVersion();
+    // Ping version endpoint with timeout
+    const version = await withTimeout(
+      client.getVersion(),
+      8000,
+      "HINDSIGHT_TIMEOUT",
+      "Hindsight health ping timed out"
+    );
     return {
       configured: true,
       connected: true,
@@ -117,7 +159,7 @@ export async function checkHindsightHealth() {
       configured: true,
       connected: false,
       bankId: config.bankId,
-      error: error.message || "Failed to connect to Hindsight Cloud",
+      error: sanitizeErrorMessage(error.message) || "Failed to connect to Hindsight Cloud",
       message: "API key is set, but could not reach Hindsight endpoint."
     };
   }
@@ -127,11 +169,25 @@ export async function checkHindsightHealth() {
  * Retain an incident memory into Hindsight
  */
 export async function retainIncidentMemory({ incident, customText = null }) {
+  if (simulatedState === "unavailable") {
+    const err = new Error("Hindsight Cloud memory service is temporarily unavailable.");
+    err.code = "HINDSIGHT_UNAVAILABLE";
+    err.status = 503;
+    throw err;
+  }
+  if (simulatedState === "timeout") {
+    const err = new Error("Hindsight retain operation timed out.");
+    err.code = "HINDSIGHT_TIMEOUT";
+    err.status = 504;
+    throw err;
+  }
+
   const config = getHindsightConfig();
 
   if (!config.configured) {
     const err = new Error("Hindsight is not configured. Please set HINDSIGHT_API_KEY in backend/.env.");
     err.code = "HINDSIGHT_NOT_CONFIGURED";
+    err.status = 503;
     throw err;
   }
 
@@ -164,12 +220,17 @@ export async function retainIncidentMemory({ incident, customText = null }) {
   ];
 
   try {
-    const response = await client.retain(bankId, content, {
-      timestamp: incident.timestamp ? new Date(incident.timestamp) : new Date(),
-      context: `ResolveAI Incident Response for ${incident.service || "service"}`,
-      metadata,
-      tags
-    });
+    const response = await withTimeout(
+      client.retain(bankId, content, {
+        timestamp: incident.timestamp ? new Date(incident.timestamp) : new Date(),
+        context: `ResolveAI Incident Response for ${incident.service || "service"}`,
+        metadata,
+        tags
+      }),
+      15000,
+      "HINDSIGHT_TIMEOUT",
+      "Hindsight retain operation timed out after 15 seconds"
+    );
 
     const record = {
       id: `mem-${Date.now()}`,
@@ -184,8 +245,8 @@ export async function retainIncidentMemory({ incident, customText = null }) {
       hindsightResponse: response
     };
 
-    memoryAuditLog.retains.unshift(record);
-    if (memoryAuditLog.retains.length > 50) memoryAuditLog.retains.pop();
+    sessionTelemetry.retains.unshift(record);
+    if (sessionTelemetry.retains.length > 50) sessionTelemetry.retains.pop();
 
     return {
       success: true,
@@ -194,8 +255,12 @@ export async function retainIncidentMemory({ incident, customText = null }) {
       memory: record
     };
   } catch (error) {
-    console.error("[Hindsight] Retain error:", error.message || error);
-    throw error;
+    const cleanMsg = sanitizeErrorMessage(error.message);
+    console.error("[Hindsight] Retain error:", cleanMsg);
+    const err = new Error(cleanMsg || "Unable to retain incident in Hindsight");
+    err.code = error.code || "HINDSIGHT_RETAIN_FAILED";
+    err.status = error.code === "HINDSIGHT_TIMEOUT" ? 504 : 500;
+    throw err;
   }
 }
 
@@ -203,13 +268,36 @@ export async function retainIncidentMemory({ incident, customText = null }) {
  * Recall memories using a natural language query
  */
 export async function recallIncidentMemories({ query, budget = "mid", maxTokens = 4096, tags = null }) {
+  if (simulatedState === "unavailable") {
+    return {
+      configured: true,
+      success: false,
+      error: "Hindsight memory service is currently unavailable.",
+      code: "HINDSIGHT_UNAVAILABLE",
+      results: [],
+      count: 0
+    };
+  }
+  if (simulatedState === "timeout") {
+    return {
+      configured: true,
+      success: false,
+      error: "Hindsight recall operation timed out.",
+      code: "HINDSIGHT_TIMEOUT",
+      results: [],
+      count: 0
+    };
+  }
+
   const config = getHindsightConfig();
 
   if (!config.configured) {
     return {
       configured: false,
+      success: false,
       results: [],
       count: 0,
+      code: "HINDSIGHT_NOT_CONFIGURED",
       message: "Hindsight is not configured. Please set HINDSIGHT_API_KEY in backend/.env."
     };
   }
@@ -226,7 +314,12 @@ export async function recallIncidentMemories({ query, budget = "mid", maxTokens 
       options.tags = tags;
     }
 
-    const response = await client.recall(bankId, query, options);
+    const response = await withTimeout(
+      client.recall(bankId, query, options),
+      15000,
+      "HINDSIGHT_TIMEOUT",
+      "Hindsight recall operation timed out after 15 seconds"
+    );
 
     const results = (response?.results || []).map((item) => ({
       id: item.id,
@@ -238,12 +331,12 @@ export async function recallIncidentMemories({ query, budget = "mid", maxTokens 
       scores: item.scores || null
     }));
 
-    memoryAuditLog.recalls.unshift({
+    sessionTelemetry.recalls.unshift({
       query,
       timestamp: new Date().toISOString(),
       matchCount: results.length
     });
-    if (memoryAuditLog.recalls.length > 50) memoryAuditLog.recalls.pop();
+    if (sessionTelemetry.recalls.length > 50) sessionTelemetry.recalls.pop();
 
     return {
       configured: true,
@@ -254,11 +347,13 @@ export async function recallIncidentMemories({ query, budget = "mid", maxTokens 
       count: results.length
     };
   } catch (error) {
-    console.error("[Hindsight] Recall error:", error.message || error);
+    const cleanMsg = sanitizeErrorMessage(error.message);
+    console.error("[Hindsight] Recall error:", cleanMsg);
     return {
       configured: true,
       success: false,
-      error: error.message || "Recall query failed",
+      error: cleanMsg || "Recall query failed",
+      code: error.code || "HINDSIGHT_RECALL_FAILED",
       results: [],
       count: 0
     };
@@ -267,15 +362,32 @@ export async function recallIncidentMemories({ query, budget = "mid", maxTokens 
 
 /**
  * Get memory statistics
+ * NOTE: sessionRetains and sessionRecalls reflect local Node.js session telemetry.
+ * Hindsight Cloud itself manages persistent cognitive memory.
  */
 export function getMemoryStats() {
   const config = getHindsightConfig();
   return {
     configured: config.configured,
     bankId: config.bankId,
-    totalRetains: memoryAuditLog.retains.length,
-    totalRecalls: memoryAuditLog.recalls.length,
-    recentRetains: memoryAuditLog.retains.slice(0, 10),
-    recentRecalls: memoryAuditLog.recalls.slice(0, 10)
+    sessionRetains: sessionTelemetry.retains.length,
+    sessionRecalls: sessionTelemetry.recalls.length,
+    totalRetains: sessionTelemetry.retains.length,
+    totalRecalls: sessionTelemetry.recalls.length,
+    recentRetains: sessionTelemetry.retains.slice(0, 10),
+    recentRecalls: sessionTelemetry.recalls.slice(0, 10),
+    storageType: "persistent-cloud",
+    persistenceNotice: "Hindsight Cloud provides persistent incident memory. Session counters shown here are local application telemetry and reset when the backend restarts."
   };
+}
+
+/**
+ * Internal helper to sanitize any provider error message
+ */
+function sanitizeErrorMessage(msg) {
+  if (!msg || typeof msg !== "string") return "Upstream memory provider error";
+  return msg
+    .replace(/hsk_[a-zA-Z0-9_-]+/g, "hsk_***")
+    .replace(/gsk_[a-zA-Z0-9_-]+/g, "gsk_***")
+    .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer ***");
 }

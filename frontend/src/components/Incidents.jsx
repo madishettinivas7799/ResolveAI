@@ -160,15 +160,22 @@ export default function Incidents({
                         <CheckCircle2 size={12} /> Stored in Memory
                       </span>
                     ) : (
-                      <button
-                        className="btn btn-outline btn-sm"
-                        disabled={isRetainingId === inc.id}
-                        onClick={() => handleRetain(inc)}
-                        title="Store this incident in Hindsight persistent memory"
-                      >
-                        <Brain size={14} />
-                        {isRetainingId === inc.id ? "Retaining..." : "Retain"}
-                      </button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "flex-start" }}>
+                        {inc.retainFailed && (
+                          <span style={{ fontSize: "0.7rem", color: "var(--accent-rose)", fontWeight: 600 }}>
+                            Retention failed
+                          </span>
+                        )}
+                        <button
+                          className="btn btn-outline btn-sm"
+                          disabled={isRetainingId === inc.id}
+                          onClick={() => handleRetain(inc)}
+                          title="Store this incident in Hindsight persistent memory"
+                        >
+                          <Brain size={14} />
+                          {isRetainingId === inc.id ? "Retaining..." : inc.retainFailed ? "Retry Retain" : "Retain"}
+                        </button>
+                      </div>
                     )}
                   </td>
 

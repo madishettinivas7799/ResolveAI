@@ -19,6 +19,7 @@ export default function App() {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   const [isNewIncidentModalOpen, setIsNewIncidentModalOpen] = useState(false);
   const [inspectIncident, setInspectIncident] = useState(null);
+  const [assistantInitialQuery, setAssistantInitialQuery] = useState("");
 
   const fetchHealth = async () => {
     try {
@@ -76,17 +77,35 @@ export default function App() {
         method: "POST"
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         await fetchIncidents();
         await fetchMemoryStats();
         if (inspectIncident?.id === incident.id) {
-          setInspectIncident((prev) => ({ ...prev, retainedToHindsight: true }));
+          setInspectIncident((prev) => ({
+            ...prev,
+            retainedToHindsight: true,
+            retainFailed: false,
+            retainError: null
+          }));
         }
+        return { success: true, alreadyRetained: data.alreadyRetained };
       } else {
+        await fetchIncidents();
+        if (inspectIncident?.id === incident.id) {
+          setInspectIncident((prev) => ({
+            ...prev,
+            retainedToHindsight: false,
+            retainFailed: true,
+            retainError: data.error || "Retention failed"
+          }));
+        }
         alert(data.error || "Failed to retain incident in Hindsight");
+        return { success: false, error: data.error };
       }
     } catch (err) {
+      await fetchIncidents();
       alert("Error retaining incident: " + err.message);
+      return { success: false, error: err.message };
     }
   };
 
@@ -98,17 +117,27 @@ export default function App() {
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         await fetchIncidents();
         await fetchMemoryStats();
+        if (formData.retainNow && data.incident && !data.incident.retainedToHindsight) {
+          alert("Incident was created, but Hindsight retention failed: " + (data.retainError || "Hindsight service unavailable."));
+        }
+        return { success: true, incident: data.incident };
+      } else {
+        return { success: false, error: data.error || "Failed to create incident" };
       }
     } catch (err) {
       console.error("Create incident error:", err);
+      return { success: false, error: "Network error: " + err.message };
     }
   };
 
   const handleExecuteDemoScenario = (demoQuery) => {
+    setAssistantInitialQuery(demoQuery || "");
     setActiveTab("assistant");
+    fetchIncidents();
+    fetchMemoryStats();
   };
 
   return (
@@ -139,6 +168,8 @@ export default function App() {
           <Assistant 
             healthData={healthData}
             onRetainCustomMemory={fetchMemoryStats}
+            initialQuery={assistantInitialQuery}
+            onClearInitialQuery={() => setAssistantInitialQuery("")}
           />
         )}
 

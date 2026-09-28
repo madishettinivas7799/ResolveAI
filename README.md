@@ -2,7 +2,7 @@
 > **AI Incident Response Agent for Software Teams — Grounded in Hindsight Persistent Memory**
 
 [![Hindsight](https://img.shields.io/badge/Memory-Hindsight_Cloud-0284c7?style=flat-square)](https://api.hindsight.vectorize.io)
-[![Groq](https://img.shields.io/badge/AI-Groq_Llama--3.3--70B-f59e0b?style=flat-square)](https://groq.com)
+[![Groq](https://img.shields.io/badge/AI-Groq_GPT--OSS--120B-f59e0b?style=flat-square)](https://groq.com)
 [![React](https://img.shields.io/badge/Frontend-React_Vite-61dafb?style=flat-square)](https://vitejs.dev)
 [![Node](https://img.shields.io/badge/Backend-Node.js_Express-22c55e?style=flat-square)](https://nodejs.org)
 
@@ -30,7 +30,7 @@ In software engineering teams:
 ResolveAI solves this by using **Hindsight** as a persistent memory bank:
 1. **Retain on Resolution:** When an incident is solved, its symptoms, root cause, verified fix, and environment are retained into Hindsight via `@vectorize-io/hindsight-client`.
 2. **Recall on Triage:** When a new incident is reported, ResolveAI executes a semantic natural-language recall across Hindsight memories.
-3. **Evidence-Grounded Recommendation:** The recalled memory is passed to Groq (Llama 3.3 70B), distinguishing past evidence from immediate hypotheses and recommending targeted steps.
+3. **Evidence-Grounded Recommendation:** The recalled memory is passed to Groq (openai/gpt-oss-120b), distinguishing past evidence from immediate hypotheses and recommending targeted steps.
 
 ### Comparison: With vs. Without Memory
 
@@ -48,27 +48,18 @@ ResolveAI solves this by using **Hindsight** as a persistent memory bank:
 
 ```mermaid
 flowchart TD
-    A[Engineer / On-Call Alert] -->|Reports Incident / Asks Query| B[ResolveAI Frontend\nReact + Vite]
-    B -->|HTTP Proxy| C[Express Backend\nNode.js]
+    A["🚨 Production Incident<br/>(Recorded / Seeded / API)"] --> B["🧠 Hindsight Retain<br/>(POST /api/incidents/:id/retain)"]
+    B --> C[("☁️ Hindsight Cloud Persistent Memory<br/>(Bank: karim@bankofbaroda.com)")]
     
-    subgraph Hindsight Persistent Memory
-        C -->|1. client.recall query| D[(Hindsight Cloud\nBank: resolveai)]
-        D -->|2. Recalled Memories + Scores| C
-    end
+    D["💬 Future Incident Query<br/>(Developer / On-Call Engineer)"] --> E["🔍 Hindsight Semantic Recall<br/>(client.recall() with Budget & Tags)"]
+    C -.-> E
     
-    subgraph LLM Reasoning
-        C -->|3. Prompt + Memory Context| E[Groq API\nLlama-3.3-70b-versatile]
-        E -->|4. Structured Remediation Plan| C
-    end
+    E --> F["📑 Top 3 Relevant Memories<br/>(Ranked & Token-Bounded Context)"]
+    F --> G["⚡ Groq LLM (openai/gpt-oss-120b)<br/>(Grounding & Anti-Overconfidence Prompt)"]
+    D --> G
     
-    C -->|5. Response + Recalled Memory Evidence| B
-    B -->|6. Review Action Plan| A
-    
-    subgraph Retention Loop
-        A -->|7. Mark Resolved & Retain| B
-        B -->|POST /api/incidents/:id/retain| C
-        C -->|8. client.retain incident| D
-    end
+    G --> H["🔍 Historical Evidence + 📋 Current Assessment<br/>(Probabilistic Framing, Not Assumed Truth)"]
+    H --> I["🔬 Recommended Verification & 🛠️ Suggested Actions<br/>(Safe Diagnostics Before Remediation)"]
 ```
 
 ---
@@ -126,13 +117,13 @@ const response = await client.recall(bankId, userQuery, {
 ```
 
 ### 8. How Groq is Used
-The recalled memories are injected into Groq's system prompt using `llama-3.3-70b-versatile`:
+The recalled memories are injected into Groq's system prompt using `openai/gpt-oss-120b`:
 ```javascript
 import Groq from "groq-sdk";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const completion = await groq.chat.completions.create({
-  model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+  model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
   messages: [
     { role: "system", content: systemPromptWithMemoryGuidance },
     { role: "user", content: `RELEVANT MEMORY:\n${recalledText}\n\nCURRENT QUERY:\n${userQuery}` }
@@ -195,7 +186,7 @@ PORT=5000
 
 # Groq API Key (get from https://console.groq.com)
 GROQ_API_KEY=gsk_your_groq_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 
 # Hindsight Cloud Configuration (get from https://api.hindsight.vectorize.io)
 HINDSIGHT_API_KEY=your_hindsight_api_key_here
@@ -249,6 +240,26 @@ cd frontend
 npm run dev
 ```
 *Frontend runs at http://localhost:3000*
+
+---
+
+### Step 4: Deploying to Render (Unified Public Web Service)
+
+ResolveAI is configured for production deployment as **ONE single Render Web Service** serving both the compiled React frontend and Express backend.
+
+1. Create a new **Web Service** on [Render](https://render.com) connected to your repository.
+2. Configure the deployment settings:
+   - **Environment:** `Node`
+   - **Build Command:** `npm run render-build` (or `npm run build`)
+   - **Start Command:** `npm start`
+   - **Health Check Path:** `/api/health`
+3. Add the following **Environment Variables** in the Render Dashboard:
+   - `GROQ_API_KEY`: *(Your Groq API key)*
+   - `GROQ_MODEL`: `openai/gpt-oss-120b`
+   - `HINDSIGHT_API_KEY`: *(Your Hindsight Cloud API key)*
+   - `HINDSIGHT_BASE_URL`: `https://api.hindsight.vectorize.io`
+   - `HINDSIGHT_BANK_ID`: *(Your Hindsight Bank ID, e.g., `resolveai`)*
+   *(Note: Render automatically supplies `PORT`)*
 
 ---
 

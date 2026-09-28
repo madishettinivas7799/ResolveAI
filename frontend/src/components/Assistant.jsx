@@ -13,7 +13,12 @@ import {
   Info
 } from "lucide-react";
 
-export default function Assistant({ healthData, onRetainCustomMemory }) {
+export default function Assistant({ 
+  healthData, 
+  onRetainCustomMemory,
+  initialQuery = "",
+  onClearInitialQuery 
+}) {
   const [messages, setMessages] = useState([
     {
       id: "intro-msg",
@@ -85,6 +90,8 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
             role: "assistant",
             content: data.response,
             recalledMemories: data.recalledMemories || [],
+            memoryStatus: data.memoryStatus || (data.memoryRetrieved ? "grounded" : useMemory ? "no_matches" : "disabled"),
+            memoryStatusMessage: data.memoryStatusMessage,
             memoryRetrieved: Boolean(data.memoryRetrieved),
             model: data.model,
             timestamp: new Date().toLocaleTimeString()
@@ -98,6 +105,7 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
             role: "assistant",
             content: `⚠️ **Incident Assistant Error**: ${data.error || "Failed to process request"}`,
             recalledMemories: [],
+            memoryStatus: "unavailable",
             memoryRetrieved: false,
             timestamp: new Date().toLocaleTimeString()
           }
@@ -111,6 +119,7 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
           role: "assistant",
           content: `⚠️ **Connection Error**: Could not connect to ResolveAI backend. Make sure the server is running on port 5000.`,
           recalledMemories: [],
+          memoryStatus: "unavailable",
           memoryRetrieved: false,
           timestamp: new Date().toLocaleTimeString()
         }
@@ -119,6 +128,26 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
       setIsLoading(false);
     }
   };
+
+  const lastHandledQueryRef = useRef("");
+
+  // Automatically submit initial query from demo scenario once
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      if (lastHandledQueryRef.current === initialQuery) {
+        return;
+      }
+      lastHandledQueryRef.current = initialQuery;
+      const queryToSend = initialQuery.trim();
+      setInputQuery(queryToSend);
+      handleSend(queryToSend);
+      if (onClearInitialQuery) {
+        onClearInitialQuery();
+      }
+    } else {
+      lastHandledQueryRef.current = "";
+    }
+  }, [initialQuery]);
 
   const sampleQueries = [
     "Payment API is returning HTTP 500 errors after today's deployment. What should I check?",
@@ -187,18 +216,65 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
               </div>
 
               <div style={{ maxWidth: "100%", width: "100%" }}>
-                {/* Visible Recalled Memory Banner */}
-                {msg.memoryRetrieved && msg.recalledMemories?.length > 0 && (
+                {/* 1. Grounded Recalled Memory Banner */}
+                {msg.memoryStatus === "grounded" && msg.recalledMemories?.length > 0 && (
                   <div className="recalled-memory-banner">
                     <div className="memory-banner-header">
                       <History size={14} />
-                      Relevant Memory Recalled From Hindsight ({msg.recalledMemories.length} match)
+                      Hindsight Memory — {msg.recalledMemories.length} relevant incident{msg.recalledMemories.length === 1 ? "" : "s"}
                     </div>
                     {msg.recalledMemories.map((mem, idx) => (
                       <div key={idx} className="memory-text-snippet">
                         {mem.text}
+                        {mem.context && (
+                          <div style={{ fontSize: "0.72rem", color: "var(--accent-blue)", marginTop: "0.25rem" }}>
+                            Context: {mem.context}
+                          </div>
+                        )}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* 2. Zero-matches Banner */}
+                {msg.memoryStatus === "no_matches" && (
+                  <div style={{
+                    background: "rgba(51, 65, 85, 0.4)",
+                    border: "1px solid rgba(148, 163, 184, 0.2)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "0.65rem 0.85rem",
+                    marginBottom: "0.75rem",
+                    fontSize: "0.8rem",
+                    color: "var(--text-secondary)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#94a3b8", fontWeight: 600 }}>
+                      <Info size={14} />
+                      No relevant Hindsight memories found.
+                    </div>
+                    <div style={{ fontSize: "0.75rem", marginTop: "0.25rem", color: "var(--text-muted)" }}>
+                      Hindsight Cloud was queried, but no matching historical incident post-mortems were found. Analysis generated from first principles.
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Unavailable / Error Banner */}
+                {msg.memoryStatus === "unavailable" && (
+                  <div style={{
+                    background: "rgba(239, 68, 68, 0.08)",
+                    border: "1px solid rgba(239, 68, 68, 0.25)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "0.65rem 0.85rem",
+                    marginBottom: "0.75rem",
+                    fontSize: "0.8rem",
+                    color: "#fca5a5"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#ef4444", fontWeight: 600 }}>
+                      <AlertTriangle size={14} />
+                      Hindsight memory unavailable.
+                    </div>
+                    <div style={{ fontSize: "0.75rem", marginTop: "0.25rem", color: "#f87171" }}>
+                      Historical memory could not be retrieved from Hindsight. Analysis generated using current incident details only.
+                    </div>
                   </div>
                 )}
 
@@ -215,16 +291,36 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
                   fontSize: "0.72rem",
                   color: "var(--text-muted)",
                   marginTop: "0.35rem",
-                  padding: "0 0.25rem"
+                  padding: "0 0.25rem",
+                  flexWrap: "wrap"
                 }}>
                   <span>{msg.timestamp}</span>
                   {msg.model && (
                     <span>• Model: {msg.model.split("/").pop()}</span>
                   )}
-                  {msg.role === "assistant" && msg.memoryRetrieved && (
-                    <span style={{ color: "var(--accent-emerald)", fontWeight: 600 }}>
-                      • Grounded in Hindsight Memory
-                    </span>
+                  {msg.role === "assistant" && (
+                    <>
+                      {msg.memoryStatus === "grounded" && (
+                        <span style={{ color: "var(--accent-emerald)", fontWeight: 600 }}>
+                          • Grounded in Hindsight Memory
+                        </span>
+                      )}
+                      {msg.memoryStatus === "no_matches" && (
+                        <span style={{ color: "#94a3b8", fontWeight: 500 }}>
+                          • Hindsight searched — no relevant memories found
+                        </span>
+                      )}
+                      {msg.memoryStatus === "unavailable" && (
+                        <span style={{ color: "var(--accent-rose)", fontWeight: 500 }}>
+                          • Hindsight unavailable
+                        </span>
+                      )}
+                      {msg.memoryStatus === "disabled" && (
+                        <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>
+                          • Memory disabled
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

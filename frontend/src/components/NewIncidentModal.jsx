@@ -13,20 +13,49 @@ export default function NewIncidentModal({ isOpen, onClose, onSave }) {
     deployment: "v2.15.0 (#a1b2c3)",
     retainNow: true
   });
+  const [validationError, setValidationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.service) return;
+    setValidationError("");
+
+    const trimmedTitle = formData.title.trim();
+    if (!trimmedTitle) {
+      setValidationError("Incident title is required.");
+      return;
+    }
+    if (trimmedTitle.length > 200) {
+      setValidationError("Incident title must not exceed 200 characters.");
+      return;
+    }
+
+    const trimmedService = formData.service.trim();
+    if (!trimmedService) {
+      setValidationError("Affected service is required.");
+      return;
+    }
+    if (trimmedService.length > 100) {
+      setValidationError("Affected service must not exceed 100 characters.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      const res = await onSave({
+        ...formData,
+        title: trimmedTitle,
+        service: trimmedService
+      });
+      if (res && res.success === false) {
+        setValidationError(res.error || "Failed to create incident");
+        return;
+      }
       onClose();
     } catch (err) {
-      console.error(err);
+      setValidationError(err.message || "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -44,6 +73,24 @@ export default function NewIncidentModal({ isOpen, onClose, onSave }) {
             <X size={20} />
           </button>
         </div>
+
+        {validationError && (
+          <div style={{
+            background: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            borderRadius: "var(--radius-md)",
+            padding: "0.65rem 0.85rem",
+            marginBottom: "1rem",
+            fontSize: "0.82rem",
+            color: "#fca5a5",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem"
+          }}>
+            <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
+            <span>{validationError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div>

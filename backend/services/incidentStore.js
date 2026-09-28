@@ -59,6 +59,10 @@ export function getIncidentById(id) {
   return incidents.find((inc) => inc.id === id) || null;
 }
 
+export function findIncident(predicate) {
+  return incidents.find(predicate) || null;
+}
+
 export function addIncident(data) {
   const newIncident = {
     id: `INC-${1000 + incidents.length + 1}`,
@@ -99,7 +103,7 @@ export function updateIncident(id, updates) {
 }
 
 export function markRetained(id) {
-  return updateIncident(id, { retainedToHindsight: true });
+  return updateIncident(id, { retainedToHindsight: true, retainFailed: false, retainError: null });
 }
 
 export function getIncidentStats() {

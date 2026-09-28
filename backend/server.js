@@ -138,7 +138,7 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`  🚀 ResolveAI Server listening on ${HOST}:${PORT}`);
   console.log(`  🔗 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`  📁 Frontend Serving: ${fs.existsSync(path.join(frontendDistPath, "index.html")) ? frontendDistPath : "dist not found (API only)"}`);
-  console.log(`  🧠 Hindsight Bank: ${process.env.HINDSIGHT_BANK_ID || "resolveai"}`);
+  console.log(`  🧠 Hindsight Memory: ResolveAI Production Memory`);
   console.log(`  ⚡ Groq Model: ${process.env.GROQ_MODEL || "openai/gpt-oss-120b"}`);
   console.log(`===============================================`);
 });

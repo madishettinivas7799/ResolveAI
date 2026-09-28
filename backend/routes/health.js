@@ -21,7 +21,6 @@ router.get("/", asyncHandler(async (req, res) => {
     hindsight: {
       configured: hindsightHealth.configured,
       connected: hindsightHealth.connected,
-      bankId: hindsightHealth.bankId,
       version: hindsightHealth.version || null,
       message: hindsightHealth.message
     },

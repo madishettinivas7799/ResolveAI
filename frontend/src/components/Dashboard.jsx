@@ -95,7 +95,7 @@ export default function Dashboard({
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
               <CheckCircle2 size={16} color="var(--accent-emerald)" />
               <span style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>
-                <strong style={{ color: "var(--accent-emerald)" }}>Hindsight Cloud: Connected</strong> (Bank: <code>{healthData?.hindsight?.bankId || "resolveai"}</code>). Persistent memory layer active.
+                <strong style={{ color: "var(--accent-emerald)" }}>Hindsight Cloud: Connected</strong> (Bank: <code>ResolveAI Production Memory</code>). Persistent memory layer active.
               </span>
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>

@@ -21,7 +21,7 @@ export default function MemoryBank({ healthData, memoryStats, onRefreshStats }) 
 
   const isConnected = Boolean(healthData?.hindsight?.connected);
   const isConfigured = Boolean(healthData?.hindsight?.configured);
-  const bankId = healthData?.hindsight?.bankId || "resolveai";
+  const bankLabel = "ResolveAI Production Memory";
 
   const handleTestRecall = async (e) => {
     if (e) e.preventDefault();
@@ -164,9 +164,9 @@ export default function MemoryBank({ healthData, memoryStats, onRefreshStats }) 
           </div>
           <div className="stat-info">
             <span className="stat-value" style={{ fontSize: "1rem", fontFamily: "var(--font-mono)" }}>
-              {bankId}
+              {bankLabel}
             </span>
-            <span className="stat-label">Active Bank ID</span>
+            <span className="stat-label">Hindsight Memory Bank</span>
             <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
               {isConnected ? "Cloud storage active" : "Offline"}
             </span>
@@ -285,7 +285,7 @@ export default function MemoryBank({ healthData, memoryStats, onRefreshStats }) 
                   Matches: {recallResults.results?.length || 0}
                 </div>
                 <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                  Hindsight Bank: <code>{recallResults.bankId}</code>
+                  Hindsight Bank: <code>ResolveAI Production Memory</code>
                 </div>
               </div>
             </div>
@@ -375,10 +375,10 @@ export default function MemoryBank({ healthData, memoryStats, onRefreshStats }) 
           color: "#e2e8f0",
           marginBottom: "1rem"
         }}>
-          <div># Configured in backend/.env on your system:</div>
+          <div># Managed securely via server environment variables:</div>
           <div>HINDSIGHT_API_KEY=hsk_********************************</div>
           <div>HINDSIGHT_BASE_URL=https://api.hindsight.vectorize.io</div>
-          <div>HINDSIGHT_BANK_ID={bankId}</div>
+          <div>HINDSIGHT_BANK_ID=(ResolveAI Production Memory)</div>
         </div>
 
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", fontSize: "0.82rem", color: "var(--text-muted)" }}>

@@ -70,7 +70,7 @@ export async function getEffectiveBankId() {
         const data = await res.json();
         if (data.banks && data.banks.length > 0) {
           resolvedBankId = data.banks[0].bank_id;
-          console.log(`[Hindsight] Auto-selected authorized bank: ${resolvedBankId}`);
+          console.log("[Hindsight] Connected to authorized cloud memory bank");
           return resolvedBankId;
         }
       }
@@ -88,7 +88,7 @@ export function getHindsightConfig() {
     return {
       configured: false,
       baseUrl: "https://api.hindsight.vectorize.io",
-      bankId: "simulated-unavailable"
+      bank: "ResolveAI Production Memory"
     };
   }
 
@@ -99,7 +99,8 @@ export function getHindsightConfig() {
   return {
     configured: Boolean(apiKey && apiKey.length > 5),
     baseUrl,
-    bankId
+    bankId,
+    bank: "ResolveAI Production Memory"
   };
 }
 
@@ -111,7 +112,7 @@ export async function checkHindsightHealth() {
     return {
       configured: false,
       connected: false,
-      bankId: "unavailable",
+      bank: "ResolveAI Production Memory",
       message: "Hindsight Cloud is temporarily unavailable (simulated)"
     };
   }
@@ -122,7 +123,7 @@ export async function checkHindsightHealth() {
     return {
       configured: false,
       connected: false,
-      bankId: config.bankId,
+      bank: "ResolveAI Production Memory",
       message: "HINDSIGHT_API_KEY is not configured in backend/.env"
     };
   }
@@ -134,7 +135,7 @@ export async function checkHindsightHealth() {
       return {
         configured: false,
         connected: false,
-        bankId: config.bankId,
+        bank: "ResolveAI Production Memory",
         message: "Hindsight client initialization failed"
       };
     }
@@ -149,7 +150,7 @@ export async function checkHindsightHealth() {
     return {
       configured: true,
       connected: true,
-      bankId: config.bankId,
+      bank: "ResolveAI Production Memory",
       version: version.api_version || "connected",
       message: "Successfully connected to Hindsight Cloud"
     };
@@ -158,7 +159,7 @@ export async function checkHindsightHealth() {
     return {
       configured: true,
       connected: false,
-      bankId: config.bankId,
+      bank: "ResolveAI Production Memory",
       error: sanitizeErrorMessage(error.message) || "Failed to connect to Hindsight Cloud",
       message: "API key is set, but could not reach Hindsight endpoint."
     };
@@ -234,7 +235,7 @@ export async function retainIncidentMemory({ incident, customText = null }) {
 
     const record = {
       id: `mem-${Date.now()}`,
-      bankId,
+      bank: "ResolveAI Production Memory",
       incidentId: incident.id,
       title: incident.title,
       service: incident.service,
@@ -250,7 +251,7 @@ export async function retainIncidentMemory({ incident, customText = null }) {
 
     return {
       success: true,
-      bankId,
+      bank: "ResolveAI Production Memory",
       itemsCount: response?.items_count ?? 1,
       memory: record
     };
@@ -341,7 +342,7 @@ export async function recallIncidentMemories({ query, budget = "mid", maxTokens 
     return {
       configured: true,
       success: true,
-      bankId,
+      bank: "ResolveAI Production Memory",
       query,
       results,
       count: results.length
@@ -369,7 +370,7 @@ export function getMemoryStats() {
   const config = getHindsightConfig();
   return {
     configured: config.configured,
-    bankId: config.bankId,
+    bank: "ResolveAI Production Memory",
     sessionRetains: sessionTelemetry.retains.length,
     sessionRecalls: sessionTelemetry.recalls.length,
     totalRetains: sessionTelemetry.retains.length,

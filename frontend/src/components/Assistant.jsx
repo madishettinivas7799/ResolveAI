@@ -424,7 +424,7 @@ Try asking about the **Payment API HTTP 500** issue or click one of the suggeste
             Hindsight Architecture
           </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
-            ResolveAI invokes <code>HindsightClient.recall()</code> on your bank <code>{healthData?.hindsight?.bankId || "resolveai"}</code> using semantic retrieval to fetch relevant post-mortems and resolutions.
+            ResolveAI invokes <code>HindsightClient.recall()</code> on <code>ResolveAI Production Memory</code> using semantic retrieval to fetch relevant post-mortems and resolutions.
           </p>
         </div>
       </div>

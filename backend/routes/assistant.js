@@ -82,7 +82,7 @@ router.post("/", asyncHandler(async (req, res) => {
         recalledMemories = recallRes.results;
         recallDetails = {
           count: recallRes.count,
-          bankId: recallRes.bankId
+          bank: "ResolveAI Production Memory"
         };
         memoryStatus = "grounded";
         memoryStatusMessage = `Hindsight Memory — ${recalledMemories.length} relevant incident(s)`;
@@ -125,7 +125,7 @@ router.post("/", asyncHandler(async (req, res) => {
     recallDetails,
     hindsight: {
       configured: hindsightConfig.configured,
-      bankId: hindsightConfig.bankId
+      bank: "ResolveAI Production Memory"
     },
     groq: {
       configured: groqConfig.configured,

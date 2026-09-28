@@ -168,7 +168,7 @@ export default function DemoScenarioModal({
                 Incident Knowledge Successfully Retained!
               </div>
               <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                Hindsight now holds this cognitive memory in bank <code>{healthData?.hindsight?.bankId || "resolveai"}</code>.
+                Hindsight now holds this cognitive memory in <code>ResolveAI Production Memory</code>.
               </p>
             </div>
 

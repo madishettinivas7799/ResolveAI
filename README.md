@@ -49,7 +49,7 @@ ResolveAI solves this by using **Hindsight** as a persistent memory bank:
 ```mermaid
 flowchart TD
     A["🚨 Production Incident<br/>(Recorded / Seeded / API)"] --> B["🧠 Hindsight Retain<br/>(POST /api/incidents/:id/retain)"]
-    B --> C[("☁️ Hindsight Cloud Persistent Memory<br/>(Bank: karim@bankofbaroda.com)")]
+    B --> C[("☁️ Hindsight Cloud Persistent Memory<br/>(ResolveAI Production Memory)")]
     
     D["💬 Future Incident Query<br/>(Developer / On-Call Engineer)"] --> E["🔍 Hindsight Semantic Recall<br/>(client.recall() with Budget & Tags)"]
     C -.-> E
